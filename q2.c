@@ -9,8 +9,7 @@
 enum State { S0, S1, S2, S3};
 
 struct state_count_map{
-    enum State cur_state;
-    enum State end_state;
+    enum State state;
     int count;
 };
 
@@ -45,31 +44,31 @@ bool is_matching_regex(char* seg, char* rgx_pattern){
 /*
     manages state transition
 */
-enum State transition(struct state_count_map thread_state, char input) {
+void transition(struct state_count_map thread_state, char input) {
     char str[2];
     str[0] = input;
     str[1] = '\0'; // Null terminator
-    enum State current_state = thread_state.cur_state;
+    enum State current_state = thread_state.state;
     switch (current_state) {
         case S0:
-            if (is_matching_regex(str, "[1-9]")) return S1;
-            else return S0;
+            if (is_matching_regex(str, "[1-9]")) thread_state.state = S1;
+            else thread_state.state = S0;
         case S1:
-            if (is_matching_regex(str, "[1-9a-f]")) return S2;
-            else return S0;
+            if (is_matching_regex(str, "[1-9a-f]")) thread_state.state = S2;
+            else thread_state.state = S0;
         case S2:
-            if (is_matching_regex(str, "[0-9a-f]")) return S3;
-            else return S0;
+            if (is_matching_regex(str, "[0-9a-f]")) thread_state.state = S3;
+            else thread_state.state = S0;
         case S3:
-            if (is_matching_regex(str, "[0-9a-f]")) return S3;
+            if (is_matching_regex(str, "[0-9a-f]")) thread_state.state = S3;
             else {
                 //segment is a match, match ++
                 #pragma omp atomic
                 thread_state.count++;
-                return S0;
+                thread_state.state = S0;
             }
         default:
-            return S0;
+            thread_state.state = S0;
     }
 }
 
@@ -103,7 +102,7 @@ char* get_thread_seg(char* source, int size, int offset){
 
 
 int get_total_count(struct state_count_map thread_state_0, struct state_count_map** thread_state_map, int t){
-    enum State start_state = thread_state_0.end_state;
+    enum State start_state = thread_state_0.state;
     int count = thread_state_0.count;
 
     for (int i = 0; i < t; i++){
@@ -128,7 +127,7 @@ int get_total_count(struct state_count_map thread_state_0, struct state_count_ma
             default:
                 break;
         }
-        start_state = valid_state.end_state;
+        start_state = valid_state.state;
         count += valid_state.count;
     }
     return count;
@@ -169,11 +168,11 @@ int main(int argc,char *argv[]) {
     for (int i = 0; i < t; i++) {
         //thread 0
         if (i == 0){
-            thread_state_0.cur_state = S0;    //thread 0 starts from S0
+            thread_state_0.state = S0;    //thread 0 starts from S0
             thread_state_0.count = 0;
             char* seg = get_thread_seg(test_str, segment_size, 0);
             for(int i = 0; i < segment_size; i++){
-                thread_state_0.end_state = transition(thread_state_0, seg[i]);
+                transition(thread_state_0, seg[i]);
             }
             free(seg);
         } else{
@@ -185,22 +184,22 @@ int main(int argc,char *argv[]) {
                 struct state_count_map thread_state;
                 switch (j){
                     case 0:
-                        thread_state.cur_state = S0;
+                        thread_state.state = S0;
                         break;
                     case 1:
-                        thread_state.cur_state = S1;
+                        thread_state.state = S1;
                         break;
                     case 2:
-                        thread_state.cur_state = S2;
+                        thread_state.state = S2;
                         break;
                     case 3:
-                        thread_state.cur_state = S3;
+                        thread_state.state = S3;
                         break;
                     default:
                         break;
                 }
                 for(int k = 0; k < seg_size; k++){
-                    thread_state.end_state = transition(thread_state, seg[k]);
+                    transition(thread_state, seg[k]);
                 }
                 thread_states[j] = thread_state;
             }

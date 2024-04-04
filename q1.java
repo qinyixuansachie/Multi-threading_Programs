@@ -19,6 +19,7 @@ public class q1 {
         String result = forkJoinPool.invoke(multiplyTask);
         long endTime = System.currentTimeMillis();
 
+        System.out.println("Input number 1: " + x + " input number 2: " + y);
         System.out.println("Result: " + result);
         System.out.println("Time taken: " + (endTime - startTime) + " ms");
     }
@@ -47,6 +48,7 @@ public class q1 {
             String yH = y.substring(0, y.length() - i);
             String yL = y.substring(y.length() - i);
 
+
             MultiplyTask aTask = new MultiplyTask(xH, yH);
             MultiplyTask bTask = new MultiplyTask(xL, yL);
             MultiplyTask cTask = new MultiplyTask(add(xH, xL), add(yH, yL));
@@ -64,7 +66,7 @@ public class q1 {
         }
 
         private String multiply(String x, String y) {
-            return String.valueOf(Long.parseLong(x) * Long.parseLong(y));
+            return String.valueOf(Integer.parseInt(x) * Integer.parseInt(y));
         }
 
         private String appendWithZeros(String number, int zeros) {
