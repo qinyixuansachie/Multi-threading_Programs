@@ -1,0 +1,40 @@
+q1
+    Description: Implemented the Karatsuba algorithm using ForkJoinPool, allows fast multiplication of big numbers.
+
+    Compilation: javac q1.java
+
+    usage: java q1 <numThreads> <number1> <number2>
+
+        - numThreads: number of threads allowed in the Fork Join ForkJoinPool
+        - number1: multiplier 1
+        - number2: multiplier 2
+
+        **Running with Unix random number generator:
+        java q1 <numThreads> "$(LC_ALL=C tr -dc '[:digit:]' < /dev/urandom | head -c <multiplier1 digits>)" "$(LC_ALL=c tr -dc '[:digit:]' < /dev/urandom | head -c <multiplier2 digits>)"
+        ***replacing <numThreads> and <multiplier1 digits> and <multiplier2 digits> with prefered value;
+
+        example:
+        java q1 1 "$(LC_ALL=C tr -dc '[:digit:]' < /dev/urandom | head -c 500)" "$(LC_ALL=c tr -dc '[:digit:]' < /dev/urandom | head -c 500)"
+
+    Output:
+        - Input number 1
+        - Input number 2
+        - Result product
+        - Time taken
+
+q2 
+    Description: Implemented a substring counter which counts the number of substrings that matches the given pattern.
+
+    Compilation: can compile via Makefile by calling "make" and remove executables using "make clean"
+
+    Usage: ./q2 <t> <n>
+        
+        - t: number of total threads allowed in the program
+        - n: length of the test string
+
+    Output:
+        - Input string content
+        - Total number of matches
+        - Time taken
+
+
