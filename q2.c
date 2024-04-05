@@ -44,31 +44,42 @@ bool is_matching_regex(char* seg, char* rgx_pattern){
 /*
     manages state transition
 */
-void transition(struct state_count_map thread_state, char input) {
+void transition(struct state_count_map *thread_state, char input, bool is_last) {
     char str[2];
     str[0] = input;
     str[1] = '\0'; // Null terminator
-    enum State current_state = thread_state.state;
+    enum State current_state = thread_state->state;
     switch (current_state) {
         case S0:
-            if (is_matching_regex(str, "[1-9]")) thread_state.state = S1;
-            else thread_state.state = S0;
+            if (is_matching_regex(str, "[1-9]")) thread_state->state = S1;
+            else thread_state->state = S0;
+            break;
         case S1:
-            if (is_matching_regex(str, "[1-9a-f]")) thread_state.state = S2;
-            else thread_state.state = S0;
+            if (is_matching_regex(str, "[1-9a-f]")) thread_state->state = S2;
+            else thread_state->state = S0;
+            break;
         case S2:
-            if (is_matching_regex(str, "[0-9a-f]")) thread_state.state = S3;
-            else thread_state.state = S0;
+            if (is_matching_regex(str, "[0-9a-f]")) thread_state->state = S3;
+            else thread_state->state = S0;
+            break;
         case S3:
-            if (is_matching_regex(str, "[0-9a-f]")) thread_state.state = S3;
+            if (is_matching_regex(str, "[0-9a-f]") && is_last) {
+                //matches and is last character: update count as well
+                thread_state->count++;
+                thread_state->state = S0;
+            }
+            else if (is_matching_regex(str, "[0-9a-f]")){
+                thread_state->state = S3;
+            }
             else {
                 //segment is a match, match ++
-                #pragma omp atomic
-                thread_state.count++;
-                thread_state.state = S0;
+                thread_state->count++;
+                thread_state->state = S0;
             }
+            break;
         default:
-            thread_state.state = S0;
+            thread_state->state = S0;
+            break;
     }
 }
 
@@ -139,22 +150,21 @@ int main(int argc,char *argv[]) {
     int t = 8,n = 10;
     if (argc > 1) {
         t = atoi(argv[1]);
-        printf("Using %d threads\n",t);
         if (argc>2) {
             n = atoi(argv[2]);
-            printf("Testing string of length %d\n",n);
         }
     }
 
     //generate string
     char* test_str = generate_random_string(n);
+    // char* test_str = "124ff2002xx7xx72eb";
 
     //limit the number of threads to t
     omp_set_dynamic(0);
     omp_set_num_threads(t);
 
     //some setup
-    int segment_size = n / t; //number of chars to be processed per thread
+    int segment_size = strlen(test_str) / t; //number of chars to be processed per thread
     int last_seg_size = segment_size + n % t; //size of the last segment may be different
     struct state_count_map thread_state_0;
     struct state_count_map** thread_state_map = malloc(t * sizeof(struct state_count_map*));
@@ -171,47 +181,36 @@ int main(int argc,char *argv[]) {
             thread_state_0.state = S0;    //thread 0 starts from S0
             thread_state_0.count = 0;
             char* seg = get_thread_seg(test_str, segment_size, 0);
-            for(int i = 0; i < segment_size; i++){
-                transition(thread_state_0, seg[i]);
+            for(int j = 0; j < segment_size; j++){
+                bool is_last = (j == segment_size - 1)? true: false;
+                transition(&thread_state_0, seg[j], is_last);
             }
             free(seg);
         } else{
             int seg_size = (i == t - 1)? last_seg_size: segment_size;
-            char* seg = get_thread_seg(test_str, seg_size, i * segment_size);
-            struct state_count_map* thread_states = malloc(4 * sizeof(struct state_count_map));
+            // char* seg = get_thread_seg(test_str, seg_size, i * segment_size);
+            int start_idx = i * segment_size;
+            struct state_count_map *thread_states = malloc(4 * sizeof(struct state_count_map));
+        
             //generate a map for each initial state
+            #pragma omp parallel for
             for(int j = 0; j < 4; j++){
-                struct state_count_map thread_state;
-                switch (j){
-                    case 0:
-                        thread_state.state = S0;
-                        break;
-                    case 1:
-                        thread_state.state = S1;
-                        break;
-                    case 2:
-                        thread_state.state = S2;
-                        break;
-                    case 3:
-                        thread_state.state = S3;
-                        break;
-                    default:
-                        break;
-                }
+                thread_states[j].state = (enum State)j;
+                thread_states[j].count = 0;
                 for(int k = 0; k < seg_size; k++){
-                    transition(thread_state, seg[k]);
+                    bool is_last = (j == segment_size - 1)? true: false;
+                    transition(&thread_states[j], test_str[start_idx + k],is_last);
                 }
-                thread_states[j] = thread_state;
             }
             thread_state_map[i] = thread_states;
-            free(seg);
+            // free(seg);
         } 
     }
-
-    int total_matches = get_total_count(thread_state_0, thread_state_map, t);
     clock_gettime(CLOCK_MONOTONIC_RAW, &end);
+    int total_matches = get_total_count(thread_state_0, thread_state_map, t);
     uint64_t delta_ms = (end.tv_sec - start.tv_sec) * 1000 + (end.tv_nsec - start.tv_nsec) / 1000000;
     printf("Input string content: %s\n", test_str);
     printf("Total count of matches: %d\n", total_matches);
     printf("Program takes %lu ms\n", delta_ms);
+    free(thread_state_map);
 }
