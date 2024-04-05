@@ -19,14 +19,18 @@ public class q1 {
         String result = forkJoinPool.invoke(multiplyTask);
         long endTime = System.currentTimeMillis();
 
-        System.out.println("Input number 1: " + x + " input number 2: " + y);
-        System.out.println("Result: " + result);
+        System.out.println("Input number 1:");
+        System.out.println(x + "\n");
+        System.out.println("Input number 2:");
+        System.out.println(y + "\n");
+        System.out.println("Result:");
+        System.out.println(result);
         System.out.println("Time taken: " + (endTime - startTime) + " ms");
     }
 
     private static class MultiplyTask extends RecursiveTask<String> {
-        private final String x;
-        private final String y;
+        private String x;
+        private String y;
 
         public MultiplyTask(String x, String y) {
             this.x = x;
@@ -40,6 +44,12 @@ public class q1 {
             //base case: single digit
             if (numDigits <= 1) {
                 return multiply(x, y);
+            }
+
+            if (x.length() < y.length()){
+                x = pad(x, y.length() - x.length() + x.length());
+            } else {
+                y = pad(y, x.length() - y.length() + y.length());
             }
 
             int i = numDigits / 2;
@@ -59,10 +69,11 @@ public class q1 {
 
             String a = aTask.join();
             String b = bTask.join();
-            String c = sub(sub(cTask.join(), a), b); //(xH + xL)(yH + yL) − a − b
+            String c = sub(sub(cTask.join(), a), b); //(xH + xL)(yH + yL) - a - b
 
             //xy = a10^(2i) + c10^i + b
-            return add(add(appendWithZeros(a, 2 * i), appendWithZeros(c, i)), b);
+            String result = add(add(appendWithZeros(a, 2 * i), appendWithZeros(c, i)), b);
+            return prune(result);
         }
 
         private String multiply(String x, String y) {
